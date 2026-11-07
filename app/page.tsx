@@ -1,21 +1,27 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 const SYMBOLS = ["7", "◆", "★", "♠", "●", "✦"]
 const PAYOUTS: Record<string, number> = { "7": 12, "◆": 8, "★": 6, "♠": 4, "●": 3, "✦": 2 }
 
 function randomSymbol() { return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)] }
+function randomReels() { return [randomSymbol(), randomSymbol(), randomSymbol()] }
 
 export default function Home() {
-  const [reels, setReels] = useState(["7", "7", "7"])
+  const [reels, setReels] = useState(["◆", "★", "♠"])
   const [credits, setCredits] = useState(1000)
   const [bet, setBet] = useState(10)
   const [spinning, setSpinning] = useState(false)
   const [message, setMessage] = useState("Ready when you are")
   const [lastWin, setLastWin] = useState(0)
+  const timerRef = useRef<number | null>(null)
 
-  const potential = useMemo(() => bet * (PAYOUTS[reels[0]] || 2), [bet, reels])
+  const potential = useMemo(() => bet * Math.max(...Object.values(PAYOUTS)), [bet])
+
+  useEffect(() => () => {
+    if (timerRef.current !== null) window.clearInterval(timerRef.current)
+  }, [])
 
   function spin() {
     if (spinning || credits < bet) return
@@ -24,12 +30,13 @@ export default function Home() {
     setCredits((value) => value - bet)
     setMessage("Reels in motion...")
     let ticks = 0
-    const timer = window.setInterval(() => {
+    timerRef.current = window.setInterval(() => {
       ticks += 1
-      setReels([randomSymbol(), randomSymbol(), randomSymbol()])
+      setReels(randomReels())
       if (ticks >= 9) {
-        window.clearInterval(timer)
-        const result = [randomSymbol(), randomSymbol(), randomSymbol()]
+        if (timerRef.current !== null) window.clearInterval(timerRef.current)
+        timerRef.current = null
+        const result = randomReels()
         setReels(result)
         const win = result.every((symbol) => symbol === result[0]) ? bet * PAYOUTS[result[0]] : 0
         setLastWin(win)
